@@ -783,22 +783,27 @@ Headlines: ${headlines}`
 // ─── NEWSAPI FETCH ────────────────────────────────────────────────────────────
 async function fetchNews(query, apiKey, page = 1) {
   if (!apiKey || apiKey.includes("YOUR_")) return null;
-  const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&sortBy=publishedAt&pageSize=30&page=${page}&apiKey=${apiKey}`;
+  const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=en&max=10&page=${page}&token=${apiKey}`;
   const res = await fetch(url);
   const data = await res.json();
-  if (data.status === "error") throw new Error(data.message || "NewsAPI error");
-  const articles = data.articles?.filter(a => a.title && a.title !== "[Removed]") || [];
-  return { articles, total: data.totalResults || articles.length };
+  if (data.errors) throw new Error(data.errors[0] || "GNews error");
+  const articles = data.articles?.map(a => ({
+    title: a.title,
+    description: a.description,
+    source: { name: a.source?.name },
+    publishedAt: a.publishedAt,
+    url: a.url,
+  })) || [];
+  return { articles, total: data.totalArticles || articles.length };
 }
 
-// Lightweight fetch — just get the total count for a query (pageSize=1)
 async function fetchCount(query, apiKey) {
   if (!apiKey || apiKey.includes("YOUR_")) return null;
   try {
-    const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&pageSize=1&apiKey=${apiKey}`;
+    const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=en&max=1&token=${apiKey}`;
     const res = await fetch(url);
     const data = await res.json();
-    return data.totalResults || 0;
+    return data.totalArticles || 0;
   } catch { return null; }
 }
 
@@ -1090,15 +1095,7 @@ export default function App() {
             </div>
           </div>
 
-          {usingMock && (
-            <div className="cfg-banner">
-              <h4>🔑 Connect Live Data</h4>
-              <p>
-                Add your free API keys in the <code>CONFIG</code> object at the top of the file to load real-time news and AI analysis.<br />
-                <a href="https://newsapi.org/register" target="_blank" rel="noreferrer">NewsAPI (free)</a> · <a href="https://console.groq.com" target="_blank" rel="noreferrer">Groq AI (free)</a>
-              </p>
-            </div>
-          )}
+      
 
           <div className="search-bar">
             <span className="search-icon">⌕</span>
